@@ -1,6 +1,6 @@
 [package]
 name = "osuparse"
-license = "GPLv3"
+license = "GPL-3.0-or-later"
 version = "0.1.0"
 authors = ["Rafael Castillo <rafael@trfs.me>"]
 description = "Crate for parsing osu! beatmaps."
