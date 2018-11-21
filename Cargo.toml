@@ -1,7 +1,9 @@
 [package]
 name = "osuparse"
+license = "GPLv3"
 version = "0.1.0"
 authors = ["Rafael Castillo <rafael@trfs.me>"]
+description = "Crate for parsing osu! beatmaps."
 
 [dependencies]
 regex = "1"
