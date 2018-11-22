@@ -1,0 +1,15 @@
+[package]
+name = "py_osuparse"
+version = "0.1.0"
+authors = ["Rafael Castillo <rafael@trfs.me>"]
+
+[lib]
+name = "osuparse"
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+osuparse = "0.1"
+rayon = "1.0.3"
+
+[dependencies.cpython]
+version = "0.2"
