@@ -13,3 +13,4 @@ rayon = "1.0.3"
 
 [dependencies.cpython]
 version = "0.2"
+default-features = false

@@ -83,14 +83,13 @@ macro_rules! value_parser {
 
 pub fn parse_kv_pair<'a>(state: &'a mut ParseState) -> Option<(&'a str, &'a str)> {
     lazy_static! {
-        static ref RE: Regex = Regex::new(r"^(\S+)\s*:\s*(\S.*)$").unwrap();
+        static ref RE: Regex = Regex::new(r"^(\S+)\s*:(.*)$").unwrap();
     }
 
     state.read_next_line()
         .and_then(|l| RE.captures(l))
         .and_then(|c| {
-            c.get(1).and_then(|k| c.get(2).map(|v| (k.as_str(), v.as_str())))
-        })
+            c.get(1).and_then(|k| c.get(2).map(|v| (k.as_str().trim(), v.as_str().trim())))})
 }
 
 macro_rules! parse_kv_section {

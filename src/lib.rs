@@ -314,7 +314,7 @@ fn parse_section(state: &mut ParseState) -> Result<Section> {
         let section_title = HEADER_RE.captures(header_line)
             .and_then(|c| c.get(1))
             .map(|c| c.as_str())
-            .ok_or_else(make_syntax_err!("Malformed section header"))?;
+            .ok_or_else(|| Error::Syntax(format!("Malformed section header: {}", header_line)))?;
 
         match section_title {
             "General" => Ok(Section::General(parse_kv_section! {
@@ -521,7 +521,7 @@ mod tests {
 
     #[test]
     fn test_parse_file() {
-        let mut file = File::open("map.osu").unwrap();
+        let mut file = File::open("test.osu").unwrap();
         let mut contents = String::new();
         file.read_to_string(&mut contents).unwrap();
 
