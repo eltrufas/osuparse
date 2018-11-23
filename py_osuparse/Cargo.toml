@@ -8,7 +8,7 @@ name = "osuparse"
 crate-type = ["rlib", "cdylib"]
 
 [dependencies]
-osuparse = "0.1"
+osuparse = { path = "../" }
 rayon = "1.0.3"
 
 [dependencies.cpython]

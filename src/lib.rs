@@ -1,6 +1,7 @@
 extern crate regex;
 #[macro_use]
 extern crate lazy_static;
+extern crate unicase;
 
 use regex::Regex;
 
@@ -47,6 +48,8 @@ pub struct GeneralSection {
     pub countdown: bool,
     pub sample_set: String,
     pub stack_leniency: f32,
+    pub countdown_offset: i32,
+    pub skin_preference: String,
     pub game_mode: GameMode,
     pub letterbox_in_breaks: bool,
     pub widescreen_storyboard: bool,
@@ -64,7 +67,9 @@ impl Default for GeneralSection {
             preview_time: 0,
             countdown: false,
             sample_set: String::new(),
+            skin_preference: String::new(),
             stack_leniency: 0.0,
+            countdown_offset: 0,
             game_mode: GameMode::Osu,
             letterbox_in_breaks: false,
             widescreen_storyboard: false,
@@ -141,7 +146,7 @@ pub struct DifficultySection {
 
 /// Represents a single timing point
 pub struct TimingPoint {
-	pub offset: i32,
+	pub offset: f32,
 	pub ms_per_beat: f32,
 	pub meter: i32,
 	pub sample_set: String,
@@ -323,11 +328,14 @@ fn parse_section(state: &mut ParseState) -> Result<Section> {
                     "AudioLeadIn" => audio_lead_in: parse_num;
                     "PreviewTime" => preview_time: parse_num;
                     "Countdown" => countdown: parse_bool;
+                    "CountdownOffset" => countdown_offset: parse_num;
                     "SampleSet" => sample_set: parse_string;
+                    "SkinPreference" => skin_preference: parse_string;
                     "StackLeniency" => stack_leniency: parse_num;
                     "Mode" => game_mode: parse_mode;
                     "LetterboxInBreaks" => letterbox_in_breaks: parse_bool;
                     "WidescreenStoryboard" => widescreen_storyboard: parse_bool;
+                    "EpilepsyWarning" => epilepsy_warning: parse_bool;
                     "StoryFireInFront" => story_fire_in_front: parse_bool;
                     "SpecialStyle" => special_style: parse_bool;
                 }
@@ -409,12 +417,13 @@ fn skip_section(state: &mut ParseState) {
 
 fn parse_version_string(state: &mut ParseState) -> Result<i32> {
     lazy_static! {
-        static ref RE: Regex = Regex::new(r"^osu file format v(\d+)$").unwrap();
+        static ref RE: Regex = Regex::new(r"^.*osu file format v(\d+)$").unwrap();
     }
 
     state.get_current_line()
-        .filter(|line| RE.is_match(line))
-        .and_then(|line| line[17..].parse::<i32>().ok())
+        .and_then(|line| RE.captures(line))
+        .and_then(|line| line.get(1))
+        .and_then(|ver| ver.as_str().parse::<i32>().ok())
 		.ok_or_else(make_syntax_err!("unable to parse version string"))
 }
 
@@ -463,16 +472,16 @@ fn parse_colours(state: &mut ParseState) -> Result<ColoursSection> {
                 colours.push((n, parse_colour(v)?));
             }
 
-            Some(("SliderBody", v)) => section.slider_body = parse_colour(v)?,
+            Some((k, v)) if unicase::eq("SliderBody", k) => section.slider_body = parse_colour(v)?,
 
-            Some(("SliderTrackOverride", v)) => {
+            Some((k, v)) if unicase::eq("SliderTrackOverride", k) => {
                 section.slider_track_override = parse_colour(v)?
             },
 
-            Some(("SliderBorder", v)) => section.slider_border = parse_colour(v)?,
+            Some((k, v))  if unicase::eq("SliderBorder", k) => section.slider_border = parse_colour(v)?,
 
-            Some(_) => {
-                return Err(Error::Syntax(String::from("Unknown key value")))
+            Some((k, _)) => {
+                return Err(Error::Syntax(format!("Unknown key value: {}", k)))
             },
             
             _ => break,
@@ -521,7 +530,7 @@ mod tests {
 
     #[test]
     fn test_parse_file() {
-        let mut file = File::open("test.osu").unwrap();
+        let mut file = File::open("test8.osu").unwrap();
         let mut contents = String::new();
         file.read_to_string(&mut contents).unwrap();
 

@@ -83,13 +83,13 @@ macro_rules! value_parser {
 
 pub fn parse_kv_pair<'a>(state: &'a mut ParseState) -> Option<(&'a str, &'a str)> {
     lazy_static! {
-        static ref RE: Regex = Regex::new(r"^(\S+)\s*:(.*)$").unwrap();
+        static ref RE: Regex = Regex::new(r"^([^:]+):(.*)$").unwrap();
     }
 
     state.read_next_line()
         .and_then(|l| RE.captures(l))
-        .and_then(|c| {
-            c.get(1).and_then(|k| c.get(2).map(|v| (k.as_str().trim(), v.as_str().trim())))})
+        .and_then(|c| 
+            c.get(1).and_then(|k| c.get(2).map(|v| (k.as_str().trim(), v.as_str().trim()))))
 }
 
 macro_rules! parse_kv_section {
@@ -100,7 +100,9 @@ macro_rules! parse_kv_section {
             loop {
                 match parse_kv_pair($state) {
                     $(
-                    Some(($str, v)) => section.$field = value_parser!(v, $($f),*)?,
+                    Some((k, v)) if unicase::eq(k, $str) => {
+                        section.$field = value_parser!(v, $($f),*)?
+                    },
                     )*
                     _ => break,
                 }
@@ -119,7 +121,7 @@ macro_rules! make_syntax_err {
 
 
 pub fn parse_num<T: std::str::FromStr>(n: &str) -> Result<T> {
-    n.parse().map_err(|_| Error::Syntax(String::from("Unable to parse number")))
+    n.parse().map_err(|_| Error::Syntax(format!("Unable to parse number: {}", n)))
 }
 
 pub fn parse_string(s: &str) -> Result<String> {
