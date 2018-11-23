@@ -530,7 +530,7 @@ mod tests {
 
     #[test]
     fn test_parse_file() {
-        let mut file = File::open("test8.osu").unwrap();
+        let mut file = File::open("test.osu").unwrap();
         let mut contents = String::new();
         file.read_to_string(&mut contents).unwrap();
 
