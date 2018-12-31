@@ -24,9 +24,9 @@ pub struct Beatmap {
     pub general: GeneralSection,
     pub editor: EditorSection,
     pub metadata: MetadataSection,
-	pub timing_points: Vec<TimingPoint>,
+    pub timing_points: Vec<TimingPoint>,
     pub hit_objects: Vec<HitObject>,
-	pub difficulty: DifficultySection,
+    pub difficulty: DifficultySection,
     pub colours: ColoursSection,
 }
 
@@ -77,7 +77,7 @@ impl Default for GeneralSection {
             special_style: false,
             epilepsy_warning: false,
             use_skin_sprites: false,
-        } 
+        }
     }
 }
 
@@ -98,7 +98,7 @@ impl Default for EditorSection {
             beat_divisor: 4,
             grid_size: 4,
             timeline_zoom: 1.0,
-        } 
+        }
     }
 }
 
@@ -146,14 +146,14 @@ pub struct DifficultySection {
 
 /// Represents a single timing point
 pub struct TimingPoint {
-	pub offset: f32,
-	pub ms_per_beat: f32,
-	pub meter: i32,
-	pub sample_set: String,
-	pub sample_index: i32,
-	pub volume: i32,
-	pub inherited: bool,
-	pub kiai_mode: bool,
+    pub offset: f32,
+    pub ms_per_beat: f32,
+    pub meter: i32,
+    pub sample_set: String,
+    pub sample_index: i32,
+    pub volume: i32,
+    pub inherited: bool,
+    pub kiai_mode: bool,
 }
 
 /// One of the four possible hit objects appearing on an osu! map.
@@ -167,7 +167,7 @@ pub enum HitObject {
 pub struct HitCircle {
     pub x: i32,
     pub y: i32,
-	pub new_combo: bool,
+    pub new_combo: bool,
     pub color_skip: i32,
     pub time: i32,
     pub hitsound: i32,
@@ -185,7 +185,7 @@ pub enum SliderType {
 pub struct Slider {
     pub x: i32,
     pub y: i32,
-	pub new_combo: bool,
+    pub new_combo: bool,
     pub color_skip: i32,
     pub time: i32,
     pub slider_type: SliderType,
@@ -201,7 +201,7 @@ pub struct Slider {
 pub struct Spinner {
     pub x: i32,
     pub y: i32,
-	pub new_combo: bool,
+    pub new_combo: bool,
     pub color_skip: i32,
     pub time: i32,
     pub hitsound: i32,
@@ -212,7 +212,7 @@ pub struct Spinner {
 pub struct HoldNote {
     pub x: i32,
     pub y: i32,
-	pub new_combo: bool,
+    pub new_combo: bool,
     pub color_skip: i32,
     pub time: i32,
     pub hitsound: i32,
@@ -247,19 +247,19 @@ pub struct Colour(i32, i32, i32);
 /// Includes a beatmap's combo colours as well as slider colour overrides.
 #[derive(Default)]
 pub struct ColoursSection {
-	pub colours: Vec<Colour>,
-	pub slider_body: Colour,
-	pub slider_track_override: Colour,
-	pub slider_border: Colour,
+    pub colours: Vec<Colour>,
+    pub slider_body: Colour,
+    pub slider_track_override: Colour,
+    pub slider_border: Colour,
 }
 
 enum Section {
     General(GeneralSection),
     Editor(EditorSection),
     Metadata(MetadataSection),
-	TimingPoints(Vec<TimingPoint>),
-	HitObjects(Vec<HitObject>),
-	Difficulty(DifficultySection),
+    TimingPoints(Vec<TimingPoint>),
+    HitObjects(Vec<HitObject>),
+    Difficulty(DifficultySection),
     Colours(ColoursSection),
     Events,
     None,
@@ -282,7 +282,7 @@ enum Section {
 /// parse_beatmap(contents.as_str()).unwrap();
 /// ```
 pub fn parse_beatmap(input: &str) -> Result<Beatmap> {
-    let mut state = ParseState::new(input); 
+    let mut state = ParseState::new(input);
 
     let version = parse_version_string(&mut state)?;
     state.read_next_line();
@@ -297,14 +297,14 @@ pub fn parse_beatmap(input: &str) -> Result<Beatmap> {
             Section::General(s) => map.general = s,
             Section::Editor(s) => map.editor = s,
             Section::Metadata(s) => map.metadata = s,
-			Section::TimingPoints(s) => map.timing_points = s,
-			Section::HitObjects(s) => map.hit_objects = s,
-			Section::Difficulty(s) => map.difficulty = s,
+            Section::TimingPoints(s) => map.timing_points = s,
+            Section::HitObjects(s) => map.hit_objects = s,
+            Section::Difficulty(s) => map.difficulty = s,
             Section::Colours(s) => map.colours = s,
-            Section::Events => {},
+            Section::Events => {}
             Section::None => break,
         }
-     }
+    }
 
     Ok(map)
 }
@@ -315,8 +315,8 @@ fn parse_section(state: &mut ParseState) -> Result<Section> {
             static ref HEADER_RE: Regex = Regex::new(r"^\[([^\[\]]*)\]\s*$").unwrap();
         }
 
-
-        let section_title = HEADER_RE.captures(header_line)
+        let section_title = HEADER_RE
+            .captures(header_line)
             .and_then(|c| c.get(1))
             .map(|c| c.as_str())
             .ok_or_else(|| Error::Syntax(format!("Malformed section header: {}", header_line)))?;
@@ -350,7 +350,7 @@ fn parse_section(state: &mut ParseState) -> Result<Section> {
                     "TimelineZoom" => timeline_zoom: parse_num;
                 }
             })),
-            
+
             "Metadata" => Ok(Section::Metadata(parse_kv_section! {
                 |MetadataSection, state| {
                     "Title" => title: parse_string;
@@ -366,7 +366,7 @@ fn parse_section(state: &mut ParseState) -> Result<Section> {
                 }
             })),
 
-			"Difficulty" => Ok(Section::Difficulty(parse_kv_section! {
+            "Difficulty" => Ok(Section::Difficulty(parse_kv_section! {
                 |DifficultySection, state| {
                     "HPDrainRate" => hp_drain_rate: parse_num;
                     "CircleSize" => circle_size: parse_num;
@@ -383,19 +383,16 @@ fn parse_section(state: &mut ParseState) -> Result<Section> {
                 Ok(Section::Events)
             }
 
-			"TimingPoints" =>
-                parse_timing_points(state).map(|s| Section::TimingPoints(s)),
+            "TimingPoints" => parse_timing_points(state).map(|s| Section::TimingPoints(s)),
 
-			"HitObjects" => parse_hit_objects(state).map(|s| Section::HitObjects(s)),
+            "HitObjects" => parse_hit_objects(state).map(|s| Section::HitObjects(s)),
 
             "Colours" => parse_colours(state).map(|s| Section::Colours(s)),
 
-            _ => {
-				Err(Error::Syntax(format!(
-					"Unknown section header {}",
-					section_title
-				)))
-			},
+            _ => Err(Error::Syntax(format!(
+                "Unknown section header {}",
+                section_title
+            ))),
         }
     } else {
         Ok(Section::None)
@@ -404,15 +401,15 @@ fn parse_section(state: &mut ParseState) -> Result<Section> {
 
 fn skip_section(state: &mut ParseState) {
     lazy_static! {
-		static ref HEADER_RE: Regex = Regex::new(r"^\[([^\[\]]*)\]\s*$").unwrap();
-	}
+        static ref HEADER_RE: Regex = Regex::new(r"^\[([^\[\]]*)\]\s*$").unwrap();
+    }
 
-	loop {
+    loop {
         match state.read_next_line() {
-            Some(l) if !HEADER_RE.is_match(l) => {},
+            Some(l) if !HEADER_RE.is_match(l) => {}
             _ => break,
         }
-	}
+    }
 }
 
 fn parse_version_string(state: &mut ParseState) -> Result<i32> {
@@ -420,20 +417,21 @@ fn parse_version_string(state: &mut ParseState) -> Result<i32> {
         static ref RE: Regex = Regex::new(r"^.*osu file format v(\d+)$").unwrap();
     }
 
-    state.get_current_line()
+    state
+        .get_current_line()
         .and_then(|line| RE.captures(line))
         .and_then(|line| line.get(1))
         .and_then(|ver| ver.as_str().parse::<i32>().ok())
-		.ok_or_else(make_syntax_err!("unable to parse version string"))
+        .ok_or_else(make_syntax_err!("unable to parse version string"))
 }
 
 fn parse_timing_points(state: &mut ParseState) -> Result<Vec<TimingPoint>> {
-	lazy_static! {
-		static ref HEADER_RE: Regex = Regex::new(r"^\[([^\[\]]*)\]\s*$").unwrap();
-	}
+    lazy_static! {
+        static ref HEADER_RE: Regex = Regex::new(r"^\[([^\[\]]*)\]\s*$").unwrap();
+    }
 
-	let mut timing_points = Vec::with_capacity(100);
-	loop {
+    let mut timing_points = Vec::with_capacity(100);
+    loop {
         match state.read_next_line() {
             Some(l) if !HEADER_RE.is_match(l) => {
                 let timing_point = parse_into_struct!(",", TimingPoint, l; {
@@ -448,26 +446,26 @@ fn parse_timing_points(state: &mut ParseState) -> Result<Vec<TimingPoint>> {
                 });
 
                 timing_points.push(timing_point)
-            },
+            }
             _ => break,
         };
-	}
+    }
 
-	Ok(timing_points)
+    Ok(timing_points)
 }
 
 fn parse_colours(state: &mut ParseState) -> Result<ColoursSection> {
-	lazy_static! {
-		static ref COLOR_RE: Regex = Regex::new(r"^Combo\d+$").unwrap();
-	}
+    lazy_static! {
+        static ref COLOR_RE: Regex = Regex::new(r"^Combo\d+$").unwrap();
+    }
 
-	let mut section: ColoursSection = Default::default();
+    let mut section: ColoursSection = Default::default();
 
     let mut colours = Vec::with_capacity(10);
 
     loop {
         match parse_kv_pair(state) {
-            Some((k, v)) if COLOR_RE.is_match(k)  => {
+            Some((k, v)) if COLOR_RE.is_match(k) => {
                 let n: i32 = parse_num(&k[5..])?;
                 colours.push((n, parse_colour(v)?));
             }
@@ -476,14 +474,14 @@ fn parse_colours(state: &mut ParseState) -> Result<ColoursSection> {
 
             Some((k, v)) if unicase::eq("SliderTrackOverride", k) => {
                 section.slider_track_override = parse_colour(v)?
-            },
+            }
 
-            Some((k, v))  if unicase::eq("SliderBorder", k) => section.slider_border = parse_colour(v)?,
+            Some((k, v)) if unicase::eq("SliderBorder", k) => {
+                section.slider_border = parse_colour(v)?
+            }
 
-            Some((k, _)) => {
-                return Err(Error::Syntax(format!("Unknown key value: {}", k)))
-            },
-            
+            Some((k, _)) => return Err(Error::Syntax(format!("Unknown key value: {}", k))),
+
             _ => break,
         }
     }
@@ -491,33 +489,33 @@ fn parse_colours(state: &mut ParseState) -> Result<ColoursSection> {
     colours.sort_unstable();
     section.colours = colours.into_iter().map(|(_, c)| c).collect();
 
-	Ok(section)
+    Ok(section)
 }
 
 fn parse_hit_objects(state: &mut ParseState) -> Result<Vec<HitObject>> {
-	lazy_static! {
-		static ref HEADER_RE: Regex = Regex::new(r"^\[([^\[\]]*)\]\s*$").unwrap();
-	}
+    lazy_static! {
+        static ref HEADER_RE: Regex = Regex::new(r"^\[([^\[\]]*)\]\s*$").unwrap();
+    }
 
-	let mut hit_objects = Vec::with_capacity(100);
+    let mut hit_objects = Vec::with_capacity(100);
 
-	loop {
+    loop {
         match state.read_next_line() {
             Some(l) if !HEADER_RE.is_match(l) => {
-			    hit_objects.push(parse_hit_object(l)?);
-            },
+                hit_objects.push(parse_hit_object(l)?);
+            }
             _ => break,
         }
-	}
+    }
 
-	Ok(hit_objects)
+    Ok(hit_objects)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::prelude::*;
     use std::fs::File;
+    use std::io::prelude::*;
 
     #[test]
     fn test_parse_version_string() {
@@ -607,7 +605,10 @@ BeatmapSetID:289074
 ").unwrap();
 
         assert_eq!(map.version, 14);
-        assert_eq!(map.general.audio_filename, "Bakemonogatari_-_Kimi_no_Shiranai_Monogatari.mp3");
+        assert_eq!(
+            map.general.audio_filename,
+            "Bakemonogatari_-_Kimi_no_Shiranai_Monogatari.mp3"
+        );
         assert_eq!(map.general.audio_lead_in, 0);
         assert_eq!(map.general.preview_time, 239594);
         assert_eq!(map.general.stack_leniency, 0.7);

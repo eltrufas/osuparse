@@ -1,8 +1,8 @@
 use regex::Regex;
 use std;
 
-use error::{Result, Error};
 use super::*;
+use error::{Error, Result};
 
 pub struct ParseState<'a> {
     lines: std::iter::Filter<std::str::Lines<'a>, fn(&&str) -> bool>,
@@ -16,8 +16,7 @@ impl<'a> ParseState<'a> {
         }
 
         ParseState {
-            lines: input.lines()
-                .filter(|l| !EMPTY_LINE.is_match(l)),
+            lines: input.lines().filter(|l| !EMPTY_LINE.is_match(l)),
             current_line: None,
         }
     }
@@ -37,18 +36,19 @@ impl<'a> ParseState<'a> {
     }
 }
 
-
 macro_rules! read_val {
-	($iter:ident, $func:expr) => {
-		$iter.next().ok_or(Error::Parse).and_then($func)
-	}
+    ($iter:ident, $func:expr) => {
+        $iter.next().ok_or(Error::Parse).and_then($func)
+    };
 }
 
 macro_rules! read_list {
-	($sep:expr, $iter:ident, $func:expr) => {
-		$iter.next().ok_or(Error::Parse)
-			.and_then(|s| s.split($sep).map($func).collect())
-	}
+    ($sep:expr, $iter:ident, $func:expr) => {
+        $iter
+            .next()
+            .ok_or(Error::Parse)
+            .and_then(|s| s.split($sep).map($func).collect())
+    };
 }
 
 macro_rules! parse_into_struct {
@@ -78,7 +78,6 @@ macro_rules! value_parser {
             .map(|s| $fn(s.trim()))
             .collect::<std::result::Result<Vec<_>, _>>()
     };
-
 }
 
 pub fn parse_kv_pair<'a>(state: &'a mut ParseState) -> Option<(&'a str, &'a str)> {
@@ -86,10 +85,13 @@ pub fn parse_kv_pair<'a>(state: &'a mut ParseState) -> Option<(&'a str, &'a str)
         static ref RE: Regex = Regex::new(r"^([^:]+):(.*)$").unwrap();
     }
 
-    state.read_next_line()
+    state
+        .read_next_line()
         .and_then(|l| RE.captures(l))
-        .and_then(|c| 
-            c.get(1).and_then(|k| c.get(2).map(|v| (k.as_str().trim(), v.as_str().trim()))))
+        .and_then(|c| {
+            c.get(1)
+                .and_then(|k| c.get(2).map(|v| (k.as_str().trim(), v.as_str().trim())))
+        })
 }
 
 macro_rules! parse_kv_section {
@@ -114,14 +116,14 @@ macro_rules! parse_kv_section {
 }
 
 macro_rules! make_syntax_err {
-	($reason:expr) => {
-		|| Error::Syntax(String::from($reason))
-	};
+    ($reason:expr) => {
+        || Error::Syntax(String::from($reason))
+    };
 }
 
-
 pub fn parse_num<T: std::str::FromStr>(n: &str) -> Result<T> {
-    n.parse().map_err(|_| Error::Syntax(format!("Unable to parse number: {}", n)))
+    n.parse()
+        .map_err(|_| Error::Syntax(format!("Unable to parse number: {}", n)))
 }
 
 pub fn parse_string(s: &str) -> Result<String> {
@@ -129,9 +131,9 @@ pub fn parse_string(s: &str) -> Result<String> {
 }
 
 pub fn parse_bool(s: &str) -> Result<bool> {
-	s.parse::<i32>()
-		.map(|n| n != 0)
-		.map_err(|_| Error::Syntax(String::from("Could not parse bool")))
+    s.parse::<i32>()
+        .map(|n| n != 0)
+        .map_err(|_| Error::Syntax(String::from("Could not parse bool")))
 }
 
 pub fn parse_mode(s: &str) -> Result<GameMode> {
@@ -140,7 +142,7 @@ pub fn parse_mode(s: &str) -> Result<GameMode> {
         "1" => Ok(GameMode::Taiko),
         "2" => Ok(GameMode::CTB),
         "3" => Ok(GameMode::Mania),
-        _ => Err(Error::Syntax(String::from("Unable to parse gamemode")))
+        _ => Err(Error::Syntax(String::from("Unable to parse gamemode"))),
     }
 }
 
@@ -154,99 +156,114 @@ pub fn parse_colour(s: &str) -> Result<Colour> {
 }
 
 pub fn parse_extras(s: &str) -> Result<HitObjectExtras> {
-	Ok(parse_into_struct!(":", HitObjectExtras, s; {
-		sample_set: parse_num,
-		addition_set: parse_num,
-		custom_index: parse_num,
-		sample_volume: parse_num,
-		filename: parse_string
-	}))
+    Ok(parse_into_struct!(":", HitObjectExtras, s; {
+        sample_set: parse_num,
+        addition_set: parse_num,
+        custom_index: parse_num,
+        sample_volume: parse_num,
+        filename: parse_string
+    }))
 }
 
 pub fn parse_slider_type(s: &str) -> Result<SliderType> {
-	match s {
-		"L" => Ok(SliderType::Linear),
-		"B" => Ok(SliderType::Bezier),
-		"P" => Ok(SliderType::Perfect),
-		"C" => Ok(SliderType::Catmull),
-		_ => Err(Error::Syntax(String::from("Invalid slider type")))
-	}
+    match s {
+        "L" => Ok(SliderType::Linear),
+        "B" => Ok(SliderType::Bezier),
+        "P" => Ok(SliderType::Perfect),
+        "C" => Ok(SliderType::Catmull),
+        _ => Err(Error::Syntax(String::from("Invalid slider type"))),
+    }
 }
 
 pub fn parse_coord(s: &str) -> Result<(i32, i32)> {
-	let mut iter = s.split(":");
-	Ok((read_val!(iter, parse_num)?, read_val!(iter, parse_num)?))
+    let mut iter = s.split(":");
+    Ok((read_val!(iter, parse_num)?, read_val!(iter, parse_num)?))
 }
 
 fn parse_curve_points(s: &str) -> Result<(SliderType, Vec<(i32, i32)>)> {
-	let mut iter = s.split("|");
-	
-	let slider_type = read_val!(iter, parse_slider_type)?;
-	
-	let points = iter.map(parse_coord).collect::<Result<Vec<(i32, i32)>>>()?;
+    let mut iter = s.split("|");
 
-	Ok((slider_type, points))
+    let slider_type = read_val!(iter, parse_slider_type)?;
+
+    let points = iter.map(parse_coord).collect::<Result<Vec<(i32, i32)>>>()?;
+
+    Ok((slider_type, points))
 }
 
 pub fn parse_hit_object(s: &str) -> Result<HitObject> {
-	let mut iter = s.split(",");
+    let mut iter = s.split(",");
 
-	let x: i32 = read_val!(iter, parse_num)?;
-	let y: i32 = read_val!(iter, parse_num)?;
-	let time: i32 = read_val!(iter, parse_num)?;
-	let obj_type: i32 = read_val!(iter, parse_num)?;
+    let x: i32 = read_val!(iter, parse_num)?;
+    let y: i32 = read_val!(iter, parse_num)?;
+    let time: i32 = read_val!(iter, parse_num)?;
+    let obj_type: i32 = read_val!(iter, parse_num)?;
 
-	let new_combo = obj_type & 4 != 0;
-	let color_skip = (obj_type >> 4) & 7;
+    let new_combo = obj_type & 4 != 0;
+    let color_skip = (obj_type >> 4) & 7;
 
-	let hitsound = read_val!(iter, parse_num)?;
-	
-	match obj_type & 139 {
-		1 => Ok(HitObject::HitCircle(HitCircle {
-            x, y, new_combo, color_skip, time, hitsound,
+    let hitsound = read_val!(iter, parse_num)?;
 
-            extras: read_val!(iter, parse_extras)
-                .unwrap_or(Default::default()),
+    match obj_type & 139 {
+        1 => Ok(HitObject::HitCircle(HitCircle {
+            x,
+            y,
+            new_combo,
+            color_skip,
+            time,
+            hitsound,
+
+            extras: read_val!(iter, parse_extras).unwrap_or(Default::default()),
         })),
 
-		2 => {
-			let (slider_type, curve_points) = read_val!(iter, parse_curve_points)?;
-			Ok(HitObject::Slider(Slider {
-				x, y, new_combo, color_skip, time, hitsound,
-				slider_type, curve_points,
+        2 => {
+            let (slider_type, curve_points) = read_val!(iter, parse_curve_points)?;
+            Ok(HitObject::Slider(Slider {
+                x,
+                y,
+                new_combo,
+                color_skip,
+                time,
+                hitsound,
+                slider_type,
+                curve_points,
 
-				repeat: read_val!(iter, parse_num)?,
-				pixel_length: read_val!(iter, parse_num)?,
+                repeat: read_val!(iter, parse_num)?,
+                pixel_length: read_val!(iter, parse_num)?,
 
-				edge_hitsounds: read_list!("|", iter, parse_num)
-					.unwrap_or(Vec::new()),	
+                edge_hitsounds: read_list!("|", iter, parse_num).unwrap_or(Vec::new()),
 
-				edge_additions: read_list!("|", iter, parse_coord)
-					.unwrap_or(Vec::new()),	
+                edge_additions: read_list!("|", iter, parse_coord).unwrap_or(Vec::new()),
 
-				extras: read_val!(iter, parse_extras)
-                    .unwrap_or(Default::default()),
-			}))
-		},
+                extras: read_val!(iter, parse_extras).unwrap_or(Default::default()),
+            }))
+        }
 
-		8 => Ok(HitObject::Spinner(Spinner {
-            x, y, time, new_combo, color_skip, hitsound,
+        8 => Ok(HitObject::Spinner(Spinner {
+            x,
+            y,
+            time,
+            new_combo,
+            color_skip,
+            hitsound,
 
             end_time: read_val!(iter, parse_num)?,
-        
-            extras: read_val!(iter, parse_extras)
-                .unwrap_or(Default::default()),
+
+            extras: read_val!(iter, parse_extras).unwrap_or(Default::default()),
         })),
 
-		128 => Ok(HitObject::HoldNote(HoldNote {
-            x, y, time, new_combo, color_skip, hitsound,
+        128 => Ok(HitObject::HoldNote(HoldNote {
+            x,
+            y,
+            time,
+            new_combo,
+            color_skip,
+            hitsound,
 
             end_time: read_val!(iter, parse_num)?,
-        
-            extras: read_val!(iter, parse_extras)
-                .unwrap_or(Default::default()),
+
+            extras: read_val!(iter, parse_extras).unwrap_or(Default::default()),
         })),
-		
-		_ => Err(Error::Syntax(String::from("Invalid hit object type")))
-	}
+
+        _ => Err(Error::Syntax(String::from("Invalid hit object type"))),
+    }
 }

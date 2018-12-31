@@ -4,15 +4,15 @@ extern crate rayon;
 
 use rayon::prelude::*;
 
-use cpython::{PyResult, Python, PyDict};
 use cpython::*;
+use cpython::{PyDict, PyResult, Python};
 use osuparse::*;
-use std::io::prelude::*;
 use std::fs::File;
+use std::io::prelude::*;
 
 macro_rules! section_builder {
-    ($name:ident -> $type:ty 
-        { $($field:ident),*} 
+    ($name:ident -> $type:ty
+        { $($field:ident),*}
         $({$($special_field:ident: $func:ident),*})*) => {
         fn $name(py: Python, section: $type) -> PyResult<PyDict> {
             let dict = PyDict::new(py);
@@ -38,13 +38,14 @@ macro_rules! section_builder {
 macro_rules! list_builder {
     ($name:ident, $T:ty, $mapper:ident) => {
         fn $name(py: Python, list: Vec<$T>) -> PyResult<PyList> {
-            let result = list.into_iter()
+            let result = list
+                .into_iter()
                 .map(|p| $mapper(py, p))
                 .collect::<PyResult<Vec<PyDict>>>()
                 .map(|v| v.to_py_object(py));
             result
         }
-    }
+    };
 }
 
 fn build_game_mode(py: Python, mode: GameMode) -> PyResult<PyString> {
@@ -71,14 +72,14 @@ fn build_hit_object(py: Python, obj: HitObject) -> PyResult<PyDict> {
         HitObject::Slider(s) => Ok(("slider", build_slider(py, s))),
         HitObject::Spinner(s) => Ok(("spinner", build_spinner(py, s))),
         HitObject::HoldNote(n) => Ok(("hold_note", build_hold_note(py, n))),
-    }.and_then(|(t, r)| {
+    }
+    .and_then(|(t, r)| {
         r.and_then(|d| {
             d.set_item(py, "type", t)?;
             Ok(d)
         })
     })
 }
-
 
 section_builder![build_editor_section -> EditorSection {
    bookmarks, distance_spacing, beat_divisor, grid_size, timeline_zoom
@@ -156,8 +157,16 @@ section_builder![build_beatmap -> Beatmap {
 // N.B: names: "librust2py" must be the name of the `.so` or `.pyd` file
 py_module_initializer!(osuparse, initosuparse, PyInit_osuparse, |py, m| {
     m.add(py, "__doc__", "This module is implemented in Rust.")?;
-    m.add(py, "parse_beatmap", py_fn!(py, parse_beatmap_py(filename: String)))?;
-    m.add(py, "parse_beatmaps", py_fn!(py, parse_beatmaps_py(filenames: Vec<String>)))?;
+    m.add(
+        py,
+        "parse_beatmap",
+        py_fn!(py, parse_beatmap_py(filename: String)),
+    )?;
+    m.add(
+        py,
+        "parse_beatmaps",
+        py_fn!(py, parse_beatmaps_py(filenames: Vec<String>)),
+    )?;
     Ok(())
 });
 
@@ -170,26 +179,23 @@ fn read_beatmap_from_file(filename: &str) -> Option<Beatmap> {
 
 fn parse_beatmaps_py(py: Python, filenames: Vec<String>) -> PyResult<PyList> {
     let maps: Option<Vec<Beatmap>> = py.allow_threads(move || {
-        filenames.par_iter()
+        filenames
+            .par_iter()
             .map(|f| read_beatmap_from_file(f))
             .collect()
     });
 
-    maps.ok_or_else(|| {
-        PyErr::new::<exc::ValueError, _>(py, "Error while parsing maps")
-    }).and_then(|v: Vec<Beatmap>| {
-        let maps: PyResult<Vec<PyDict>> = v.into_iter()
-            .map(|map| build_beatmap(py, map))
-            .collect();
+    maps.ok_or_else(|| PyErr::new::<exc::ValueError, _>(py, "Error while parsing maps"))
+        .and_then(|v: Vec<Beatmap>| {
+            let maps: PyResult<Vec<PyDict>> =
+                v.into_iter().map(|map| build_beatmap(py, map)).collect();
 
-        maps.map(|v| v.to_py_object(py))
-    })
+            maps.map(|v| v.to_py_object(py))
+        })
 }
 
 fn parse_beatmap_py(py: Python, filename: String) -> PyResult<PyDict> {
-    read_beatmap_from_file(&filename).ok_or_else(|| {
-        PyErr::new::<exc::ValueError, _>(py, "Error while parsing map")
-    }).and_then(|map| {
-        build_beatmap(py, map)
-    })
+    read_beatmap_from_file(&filename)
+        .ok_or_else(|| PyErr::new::<exc::ValueError, _>(py, "Error while parsing map"))
+        .and_then(|map| build_beatmap(py, map))
 }
