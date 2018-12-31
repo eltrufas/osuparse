@@ -11,8 +11,8 @@ pub enum Error {
 }
 
 impl Display for Error {
-    fn fmt(&self, formatter: &mut  std::fmt::Formatter) -> std::fmt::Result {
-		match *self {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
             Error::Message(ref msg) => formatter.write_str(msg),
             Error::Syntax(ref reason) => write!(formatter, "Syntax error: {}", reason),
             Error::Parse => formatter.write_str("Parsing error"),
