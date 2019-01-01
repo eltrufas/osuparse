@@ -20,6 +20,7 @@ use parse::*;
 /// implemented in this crate.
 #[derive(Default)]
 pub struct Beatmap {
+    /// The version of the .osu file format.
     pub version: i32,
     pub general: GeneralSection,
     pub editor: EditorSection,
@@ -43,9 +44,18 @@ pub enum GameMode {
 #[derive(Debug)]
 pub struct GeneralSection {
     pub audio_filename: String,
+    /// Is number of milliseconds before the audio file should begin playing.
+    /// Useful for audio files that begin immediately.
     pub audio_lead_in: i32,
+    /// Is the number of milliseconds before the audio file should begin
+    /// playing when selected in the song selection menu.
     pub preview_time: i32,
+    /// Whether or not a countdown should occur before the first hit object
+    /// appears.
     pub countdown: bool,
+    /// Specifies which set of hit sounds will be used throughout the beatmap.
+    /// Unlike the `sample_set` field in [`HitObjectExtras`](struct.HitObjectExtras.html),
+    /// this value is a string.
     pub sample_set: String,
     pub stack_leniency: f32,
     pub countdown_offset: i32,
@@ -53,7 +63,9 @@ pub struct GeneralSection {
     pub game_mode: GameMode,
     pub letterbox_in_breaks: bool,
     pub widescreen_storyboard: bool,
+    /// Whether or not display the storyboard in front of combo fire.
     pub story_fire_in_front: bool,
+    /// Use special Style (N+1 style) for osu!mania.
     pub special_style: bool,
     pub epilepsy_warning: bool,
     pub use_skin_sprites: bool,
@@ -104,15 +116,24 @@ impl Default for EditorSection {
 
 /// Metadata relating to the beatmap
 pub struct MetadataSection {
+    /// Is the title of the song limited to ASCII characters, e.g. `Yoru Naku Usagi wa Yume o Miru`.
     pub title: String,
+    /// Is the title of the song with unicode support, e.g. `夜啼く兎は夢を見る`.
     pub title_unicode: String,
+    /// Is the name of the song's artist limited to ASCII characters, e.g. `MISATO`
     pub artist: String,
+    /// Is the name of the song's artist with unicode support, e.g. `美里`
     pub artist_unicode: String,
+    /// Username of the maker of the beatmap, e.g. `Sotarks`
     pub creator: String,
+    /// The name of the beatmap's difficulty, e.g. `Hard`
     pub version: String,
+    /// The origin of the song with unicode support, e.g. [`東方Project`](https://en.wikipedia.org/wiki/Touhou_Project)
     pub source: String,
     pub tags: Vec<String>,
+    /// Is the ID of the single beatmap.
     pub beatmap_id: i32,
+    /// Is the ID of the beatmap set that the beatmap belongs to.
     pub beatmap_set_id: i32,
 }
 
@@ -136,7 +157,6 @@ impl Default for MetadataSection {
 /// Difficulty modifiers for the beatmap
 #[derive(Default)]
 pub struct DifficultySection {
-    /// Specifies how fast the health decreases.
     pub hp_drain_rate: f32,
     /// Defines the size of the hit objects in the osu!standard mode.
     ///
