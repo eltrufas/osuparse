@@ -16,7 +16,7 @@ use parse::*;
 /// Represents an osu! beatmap file. Includes information specified in
 /// the [specification](https://osu.ppy.sh/help/wiki/osu!_File_Formats/Osu_(file_format)).
 ///
-/// NOTE: This is missing the Event section, as parsing for this has yet to be
+/// __NOTE:__ This is missing the Event section, as parsing for this has yet to be
 /// implemented in this crate.
 #[derive(Default)]
 pub struct Beatmap {
@@ -136,23 +136,67 @@ impl Default for MetadataSection {
 /// Difficulty modifiers for the beatmap
 #[derive(Default)]
 pub struct DifficultySection {
+    /// Specifies how fast the health decreases.
     pub hp_drain_rate: f32,
+    /// Defines the size of the hit objects in the osu!standard mode.
+    ///
+    /// The radius in osu!pixels is defined by the formula
+    /// `32 * (1 - 0.7 * (CircleSize - 5) / 5)`, alternatively written as
+    /// `54.4 - 4.48 * CircleSize`.
+    ///
+    /// The value of CircleSize for ranked beatmaps must stand at from 2 to 7,
+    /// inclusive.
+    ///
+    /// In osu!mania mode, CircleSize is the number of columns.
     pub circle_size: f32,
+    /// Is the harshness of the hit window and the difficulty of spinners.
     pub overall_difficulty: f32,
+    /// Defines when hit objects start to fade in relatively to when they
+    /// should be hit.
     pub approach_rate: f32,
+    /// Specifies the multiplier of the slider velocity. The velocity at slider
+    /// multiplier = 1 is 100 osu!pixels per beat. A slider multiplier of `2`
+    /// would yield a velocity of 200 osu!pixels per beat. The default slider
+    /// multiplier is 1.4 when the property is omitted.
     pub slider_multiplier: f32,
+    /// The number of ticks per beat. The default value is 1 tick per beat.
     pub slider_tick_rate: f32,
 }
 
 /// Represents a single timing point
 pub struct TimingPoint {
+    /// Is the number of milliseconds from the start of the song, and defines
+    /// when the timing point starts. A timing point ends when the next one
+    /// starts. The first timing point starts at 0, disregarding its offset.
     pub offset: f32,
+    /// Defines the duration of one beat. It affect the scrolling speed in
+    /// osu!taiko or osu!mania, and the slider speed in osu!standard, among
+    /// other things.
+    ///
+    /// When positive, it is faithful to its name. When negative, it is a
+    /// percentage of previous non-negative milliseconds per beat. For
+    /// instance, 3 consecutive timing points with `500`, `-50`, `-100`
+    /// will have a resulting beat duration of half a second, a quarter of
+    /// a second, and half a second, respectively.
     pub ms_per_beat: f32,
+    /// Defines the number of beats in a [measure](https://en.wikipedia.org/wiki/Bar_(music)).
     pub meter: i32,
+    /// Defines the default sample that hit objects inherit.
     pub sample_set: String,
+    /// The default custom index that hit objects inherit if the
+    /// [`custom_index`](struct.HitObjectExtras.html#structfield.custom_index)
+    /// field in [`HitObjectExtras`](struct.HitObjectExtras.html) is set to `0`.
     pub sample_index: i32,
+    /// Is the default volume that hitobjects inherit. It ranges from `0`
+    /// to `100`.
     pub volume: i32,
+    /// Tells if the timing point can be inherited from. Inherited is
+    /// redundant with the milliseconds per beat field. A positive milliseconds
+    /// per beat implies inherited is `true`, and a negative one implies it is
+    /// `false`.
     pub inherited: bool,
+    /// Defines whether or not [Kiai Time](https://osu.ppy.sh/help/wiki/Beatmap_Editor/Kiai_Time)
+    /// effects are active.
     pub kiai_mode: bool,
 }
 
@@ -179,6 +223,7 @@ pub enum SliderType {
     Linear,
     Bezier,
     Perfect,
+    /// Catmull slider type is depricated, but may still appear in an old map.
     Catmull,
 }
 
@@ -220,11 +265,33 @@ pub struct HoldNote {
     pub extras: HitObjectExtras,
 }
 
+/// The extras field is optional and define additional parameters related to
+/// the hit sound samples.
 pub struct HitObjectExtras {
+    /// Changes the sample set of the __normal__ hit sound.
+    ///
+    /// The values for these are:
+    /// * 0: Auto. See below.
+    /// * 1: Normal.
+    /// * 2: Soft.
+    /// * 3: Drum.
+    ///
+    /// When `sample_set` is `0`, its value is inherited from the timing point.
     pub sample_set: i32,
+    /// Changes the sample set for the other hit sounds
+    /// (whistle, finish, clap). See above.
     pub addition_set: i32,
+    /// Is the custom sample set index, e.g. `3` in
+    /// `soft-hitnormal3.wav`. The special index `1` doesn't appear in the
+    /// filename, for example `normal-hitfinish.wav`.
+    /// The special index `0` means it is inherited from the timing point.
     pub custom_index: i32,
+    /// Is the volume of the sample, and ranges from
+    /// `0` to `100`.
     pub sample_volume: i32,
+    /// Names an audio file in the folder to play instead of
+    /// sounds from sample sets (see above), relative to the beatmap's
+    /// directory.
     pub filename: String,
 }
 

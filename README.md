@@ -20,3 +20,8 @@ osuparse fully supports the [osu! beatmap file specification](https://osu.ppy.sh
 with the important exception of the Events section, which is pending
 implmentation.
 
+# License:
+
+This crate is licensed under terms of the GPL-3.0 license, as published by the Free Software Foundation.
+Code documentation comments are partially sourced from the [osu!wiki](https://github.com/ppy/osu-wiki),
+which is licensed under terms of the [CC-BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/legalcode) license.
