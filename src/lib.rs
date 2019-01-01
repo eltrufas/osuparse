@@ -134,7 +134,6 @@ impl Default for MetadataSection {
 }
 
 /// Difficulty modifiers for the beatmap
-#[derive(Default)]
 pub struct DifficultySection {
     pub hp_drain_rate: f32,
     pub circle_size: f32,
@@ -143,6 +142,21 @@ pub struct DifficultySection {
     pub slider_multiplier: f32,
     pub slider_tick_rate: f32,
 }
+
+impl Default for DifficultySection {
+    /// Create a [DifficultySection](structs.DifficultySection.html) where
+    /// all fields are set to 5 except `slider_multiplier` and `slider_tickrate`,
+    /// as [is the case in the editor](https://github.com/ppy/osu/blame/f517f98ae7bb6e3e60a6ed552a89474b9470344e/osu.Game/Beatmaps/BeatmapDifficulty.cs#L13).
+    fn default() -> Self {
+        hp_drain_rate: 5.0,
+        circle_size: 5.0,
+        overall_difficulty: 5.0,
+        approach_rate: 5.0,
+        slider_multiplier: 1.4,
+        slider_tickrate: 1,
+    }
+}
+
 
 /// Represents a single timing point
 pub struct TimingPoint {
