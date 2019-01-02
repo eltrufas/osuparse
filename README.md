@@ -20,3 +20,26 @@ osuparse fully supports the [osu! beatmap file specification](https://osu.ppy.sh
 with the important exception of the Events section, which is pending
 implmentation.
 
+## Python bindings
+
+This repository includes python bindings. You can install a prebuilt package from PyPi:
+
+```
+$ pip install osuparse
+```
+
+You can also build and install from source:
+
+```
+$ cd py_osuparse
+$ python setup.py install
+```
+
+Usage is as follows:
+
+```python
+import osuparse
+
+map = osuparse.parse_beatmap('beatmap.osu')
+```
+
