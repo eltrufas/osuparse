@@ -36,12 +36,17 @@ impl<'a> ParseState<'a> {
     }
 }
 
+/// Get the next item of given iterator, and convert it to the correct
+/// type using the given function.
 macro_rules! read_val {
     ($iter:ident, $func:expr) => {
         $iter.next().ok_or(Error::Parse).and_then($func)
     };
 }
 
+/// Get the next item of given iterator (presumably of type string),
+/// split using given seperator, and convert each split string to the
+/// correct type using given function.
 macro_rules! read_list {
     ($sep:expr, $iter:ident, $func:expr) => {
         $iter
@@ -80,6 +85,7 @@ macro_rules! value_parser {
     };
 }
 
+/// Parse key-value pair.
 pub fn parse_kv_pair<'a>(state: &'a mut ParseState) -> Option<(&'a str, &'a str)> {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"^([^:]+):(.*)$").unwrap();
