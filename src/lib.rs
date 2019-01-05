@@ -217,8 +217,10 @@ pub struct TimingPoint {
     pub ms_per_beat: f32,
     /// Defines the number of beats in a [measure](https://en.wikipedia.org/wiki/Bar_(music)).
     pub meter: i32,
-    /// Defines the default sample that hit objects inherit.
-    pub sample_set: String,
+    /// Defines the default sample that hit objects inherit if the
+    /// [`sample_set`](struct.HitObjectExtras.html#structfield.sample_set) field
+    /// in [`HitObjectExtras`](struct.HitObjectExtras.html) is set to `0`.
+    pub sample_set: i32,
     /// The default custom index that hit objects inherit if the
     /// [`custom_index`](struct.HitObjectExtras.html#structfield.custom_index)
     /// field in [`HitObjectExtras`](struct.HitObjectExtras.html) is set to `0`.
@@ -541,7 +543,7 @@ fn parse_timing_points(state: &mut ParseState) -> Result<Vec<TimingPoint>> {
                     offset: parse_num,
                     ms_per_beat: parse_num,
                     meter: parse_num,
-                    sample_set: parse_string,
+                    sample_set: parse_num,
                     sample_index: parse_num,
                     volume: parse_num,
                     inherited: parse_bool,
