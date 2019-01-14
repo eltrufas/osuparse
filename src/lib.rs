@@ -10,6 +10,7 @@ use error::{Error, Result};
 #[macro_use]
 mod parse;
 mod error;
+mod deserialize;
 
 use parse::*;
 
@@ -32,12 +33,12 @@ pub struct Beatmap {
 }
 
 /// One of the four currently available osu! gamemodes.
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum GameMode {
-    Osu,
-    Taiko,
-    CTB,
-    Mania,
+    Osu = 0,
+    Taiko = 1,
+    CTB = 2,
+    Mania = 3,
 }
 
 /// General properties of a beatmap.
@@ -236,6 +237,23 @@ pub struct TimingPoint {
     /// Defines whether or not [Kiai Time](https://osu.ppy.sh/help/wiki/Beatmap_Editor/Kiai_Time)
     /// effects are active.
     pub kiai_mode: bool,
+}
+
+impl Default for TimingPoint {
+    fn default() -> Self {
+        TimingPoint {
+            offset: 0.0,
+            /// This equals 200 beats per minute
+            ms_per_beat: 300.0,
+            /// Four beats per measure is standard for a lot of music
+            meter: 4,
+            sample_set: 0,
+            sample_index: 0,
+            volume: 100,
+            inherited: false,
+            kiai_mode: false,
+        }
+    }
 }
 
 /// One of the four possible hit objects appearing on an osu! map.
