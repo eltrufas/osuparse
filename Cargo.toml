@@ -9,7 +9,5 @@ authors = ["Rafael Castillo <rafael@trfs.me>"]
 description = "Crate for parsing osu! beatmaps."
 
 [dependencies]
-regex = "1"
-lazy_static = "1.2.0"
 unicase = "2.2.0"
 

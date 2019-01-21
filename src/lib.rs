@@ -1,9 +1,4 @@
-extern crate regex;
-#[macro_use]
-extern crate lazy_static;
 extern crate unicase;
-
-use regex::Regex;
 
 use error::{Error, Result};
 
@@ -414,16 +409,18 @@ pub fn parse_beatmap(input: &str) -> Result<Beatmap> {
     Ok(map)
 }
 
+fn match_header_line<'a>(line: &'a str) -> Option<&'a str> {
+    let line = line.trim_end();
+    let mut chars = line.chars();
+
+    chars.next().filter(|c| *c == '[')
+        .and(chars.last().filter(|c| *c == ']'))
+        .map(|_| &line[1..line.len() - 1])
+}
+
 fn parse_section(state: &mut ParseState) -> Result<Section> {
     if let Some(header_line) = state.get_current_line() {
-        lazy_static! {
-            static ref HEADER_RE: Regex = Regex::new(r"^\[([^\[\]]*)\]\s*$").unwrap();
-        }
-
-        let section_title = HEADER_RE
-            .captures(header_line)
-            .and_then(|c| c.get(1))
-            .map(|c| c.as_str())
+        let section_title = match_header_line(header_line)
             .ok_or_else(|| Error::Syntax(format!("Malformed section header: {}", header_line)))?;
 
         match section_title {
@@ -505,40 +502,27 @@ fn parse_section(state: &mut ParseState) -> Result<Section> {
 }
 
 fn skip_section(state: &mut ParseState) {
-    lazy_static! {
-        static ref HEADER_RE: Regex = Regex::new(r"^\[([^\[\]]*)\]\s*$").unwrap();
-    }
-
     loop {
         match state.read_next_line() {
-            Some(l) if !HEADER_RE.is_match(l) => {}
+            Some(l) if match_header_line(l).is_none() => {}
             _ => break,
         }
     }
 }
 
 fn parse_version_string(state: &mut ParseState) -> Result<i32> {
-    lazy_static! {
-        static ref RE: Regex = Regex::new(r"^.*osu file format v(\d+)$").unwrap();
-    }
-
     state
         .get_current_line()
-        .and_then(|line| RE.captures(line))
-        .and_then(|line| line.get(1))
-        .and_then(|ver| ver.as_str().parse::<i32>().ok())
+        .filter(|l| l.starts_with("osu file format v"))
+        .and_then(|l| l[17..].trim_end().parse::<i32>().ok())
         .ok_or_else(make_syntax_err!("unable to parse version string"))
 }
 
 fn parse_timing_points(state: &mut ParseState) -> Result<Vec<TimingPoint>> {
-    lazy_static! {
-        static ref HEADER_RE: Regex = Regex::new(r"^\[([^\[\]]*)\]\s*$").unwrap();
-    }
-
     let mut timing_points = Vec::with_capacity(100);
     loop {
         match state.read_next_line() {
-            Some(l) if !HEADER_RE.is_match(l) => {
+            Some(l) if match_header_line(l).is_none() => {
                 let timing_point = parse_into_struct!(",", TimingPoint, l; {
                     offset: parse_num,
                     ms_per_beat: parse_num,
@@ -560,17 +544,13 @@ fn parse_timing_points(state: &mut ParseState) -> Result<Vec<TimingPoint>> {
 }
 
 fn parse_colours(state: &mut ParseState) -> Result<ColoursSection> {
-    lazy_static! {
-        static ref COLOR_RE: Regex = Regex::new(r"^Combo\d+$").unwrap();
-    }
-
     let mut section: ColoursSection = Default::default();
 
     let mut colours = Vec::with_capacity(10);
 
     loop {
         match parse_kv_pair(state) {
-            Some((k, v)) if COLOR_RE.is_match(k) => {
+            Some((k, v)) if k.starts_with("Combo") => {
                 let n: i32 = parse_num(&k[5..])?;
                 colours.push((n, parse_colour(v)?));
             }
@@ -598,15 +578,11 @@ fn parse_colours(state: &mut ParseState) -> Result<ColoursSection> {
 }
 
 fn parse_hit_objects(state: &mut ParseState) -> Result<Vec<HitObject>> {
-    lazy_static! {
-        static ref HEADER_RE: Regex = Regex::new(r"^\[([^\[\]]*)\]\s*$").unwrap();
-    }
-
     let mut hit_objects = Vec::with_capacity(100);
 
     loop {
         match state.read_next_line() {
-            Some(l) if !HEADER_RE.is_match(l) => {
+            Some(l) if match_header_line(l).is_none() => {
                 hit_objects.push(parse_hit_object(l)?);
             }
             _ => break,

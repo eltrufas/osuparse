@@ -1,4 +1,3 @@
-use regex::Regex;
 use std;
 
 use super::*;
@@ -11,12 +10,8 @@ pub struct ParseState<'a> {
 
 impl<'a> ParseState<'a> {
     pub fn new(input: &'a str) -> Self {
-        lazy_static! {
-            static ref EMPTY_LINE: Regex = Regex::new(r"^\s*$").unwrap();
-        }
-
         ParseState {
-            lines: input.lines().filter(|l| !EMPTY_LINE.is_match(l)),
+            lines: input.lines().filter(|l| !l.is_empty()),
             current_line: None,
         }
     }
@@ -87,16 +82,11 @@ macro_rules! value_parser {
 
 /// Parse key-value pair.
 pub fn parse_kv_pair<'a>(state: &'a mut ParseState) -> Option<(&'a str, &'a str)> {
-    lazy_static! {
-        static ref RE: Regex = Regex::new(r"^([^:]+):(.*)$").unwrap();
-    }
-
     state
         .read_next_line()
-        .and_then(|l| RE.captures(l))
-        .and_then(|c| {
-            c.get(1)
-                .and_then(|k| c.get(2).map(|v| (k.as_str().trim(), v.as_str().trim())))
+        .and_then(|l| {
+            let mut iter = l.splitn(2, ":");
+            iter.next().and_then(|left| iter.next().map(|right| (left.trim(), right.trim())))
         })
 }
 
