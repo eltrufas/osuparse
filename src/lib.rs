@@ -393,7 +393,9 @@ pub fn parse_beatmap(input: &str) -> Result<Beatmap> {
     };
 
     loop {
-        match parse_section(&mut state)? {
+        let section = parse_section(&mut state);
+        let section = state.wrap_syntax_error(section);
+        match section? {
             Section::General(s) => map.general = s,
             Section::Editor(s) => map.editor = s,
             Section::Metadata(s) => map.metadata = s,
@@ -421,7 +423,7 @@ fn match_header_line<'a>(line: &'a str) -> Option<&'a str> {
 fn parse_section(state: &mut ParseState) -> Result<Section> {
     if let Some(header_line) = state.get_current_line() {
         let section_title = match_header_line(header_line)
-            .ok_or_else(|| Error::Syntax(format!("Malformed section header: {}", header_line)))?;
+            .ok_or_else(|| state.syntax_error("Malformed section header"))?;
 
         match section_title {
             "General" => Ok(Section::General(parse_kv_section! {
@@ -491,10 +493,7 @@ fn parse_section(state: &mut ParseState) -> Result<Section> {
 
             "Colours" => parse_colours(state).map(|s| Section::Colours(s)),
 
-            _ => Err(Error::Syntax(format!(
-                "Unknown section header {}",
-                section_title
-            ))),
+            _ => Err(state.syntax_error("Unknown section header")),
         }
     } else {
         Ok(Section::None)
@@ -515,7 +514,7 @@ fn parse_version_string(state: &mut ParseState) -> Result<i32> {
         .get_current_line()
         .filter(|l| l.starts_with("osu file format v"))
         .and_then(|l| l[17..].trim_end().parse::<i32>().ok())
-        .ok_or_else(make_syntax_err!("unable to parse version string"))
+        .ok_or_else(|| state.syntax_error("Unable to parse version line"))
 }
 
 fn parse_timing_points(state: &mut ParseState) -> Result<Vec<TimingPoint>> {
@@ -549,6 +548,7 @@ fn parse_colours(state: &mut ParseState) -> Result<ColoursSection> {
     let mut colours = Vec::with_capacity(10);
 
     loop {
+        state.read_next_line();
         match parse_kv_pair(state) {
             Some((k, v)) if k.starts_with("Combo") => {
                 let n: i32 = parse_num(&k[5..])?;
@@ -565,7 +565,7 @@ fn parse_colours(state: &mut ParseState) -> Result<ColoursSection> {
                 section.slider_border = parse_colour(v)?
             }
 
-            Some((k, _)) => return Err(Error::Syntax(format!("Unknown key value: {}", k))),
+            Some(_) => return Err(state.syntax_error("Unknown key value")),
 
             _ => break,
         }
