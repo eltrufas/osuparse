@@ -1,6 +1,7 @@
 extern crate unicase;
 
-use error::{Error, Result};
+use error::Result;
+pub use error::Error;
 
 #[macro_use]
 mod parse;
