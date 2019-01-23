@@ -288,6 +288,7 @@ pub struct Spinner {
     pub extras: HitObjectExtras,
 }
 
+#[derive(Default)]
 pub struct HoldNote {
     pub x: i32,
     pub y: i32,
@@ -513,8 +514,8 @@ fn skip_section(state: &mut ParseState) {
 fn parse_version_string(state: &mut ParseState) -> Result<i32> {
     state
         .get_current_line()
-        .filter(|l| l.starts_with("osu file format v"))
-        .and_then(|l| l[17..].trim_end().parse::<i32>().ok())
+        .and_then(|l| l.find("osu file format v").map(|n| (n, l)))
+        .and_then(|(n, l)| l[n + 17..].trim_end().parse::<i32>().ok())
         .ok_or_else(|| state.syntax_error("Unable to parse version line"))
 }
 
@@ -611,6 +612,15 @@ mod tests {
     #[test]
     fn test_parse_file() {
         let mut file = File::open("test.osu").unwrap();
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).unwrap();
+
+        parse_beatmap(contents.as_str()).unwrap();
+    }
+
+    #[test]
+    fn test_parse_mania_map() {
+        let mut file = File::open("omtest.osu").unwrap();
         let mut contents = String::new();
         file.read_to_string(&mut contents).unwrap();
 
