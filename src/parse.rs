@@ -12,7 +12,8 @@ pub struct ParseState<'a> {
 impl<'a> ParseState<'a> {
     pub fn new(input: &'a str) -> Self {
         let mut ps = ParseState {
-            lines: Box::new(input.lines().enumerate().filter(|(_, l)| !l.is_empty())),
+            lines: Box::new(input.lines().enumerate()
+                            .filter(|(_, l)| !l.trim().is_empty())),
             current_line: None,
         };
 
@@ -255,18 +256,38 @@ pub fn parse_hit_object(s: &str) -> Result<HitObject> {
             extras: read_val!(iter, parse_extras).unwrap_or(Default::default()),
         })),
 
-        128 => Ok(HitObject::HoldNote(HoldNote {
-            x,
-            y,
-            time,
-            new_combo,
-            color_skip,
-            hitsound,
+        128 => {
+            let mut obj = HoldNote {
+                x,
+                y,
+                time,
+                new_combo,
+                color_skip,
+                hitsound,
 
-            end_time: read_val!(iter, parse_num)?,
+                ..Default::default()
+            };
 
-            extras: read_val!(iter, parse_extras).unwrap_or(Default::default()),
-        })),
+            let (end_time, extras) = iter.next()
+                .and_then(|s| {
+                    let mut iter = s.splitn(2, ':');
+                    iter.next().and_then(|et| {
+                        iter.next().map(|ex| (et, ex))
+                    })
+                })
+                .ok_or_else(|| Error::Message("Could not read object extras"))
+                .and_then(|(et, ex)| {
+                    let et: i32 = parse_num(et)?;
+                    let ex = parse_extras(ex)?;
+
+                    return Ok((et, ex))
+                })?;
+
+            obj.end_time = end_time;
+            obj.extras = extras;
+
+            Ok(HitObject::HoldNote(obj))
+        },
 
         _ => Err(Error::Message("Invalid hit object type")),
     }
