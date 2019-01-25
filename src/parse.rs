@@ -117,6 +117,7 @@ macro_rules! parse_kv_section {
                             .wrap_syntax_error(value_parser!(v, $($f),*))?
                     },
                     )*
+                    Some(_) => {},
                     _ => break,
                 }
             }

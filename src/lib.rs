@@ -567,7 +567,7 @@ fn parse_colours(state: &mut ParseState) -> Result<ColoursSection> {
                 section.slider_border = parse_colour(v)?
             }
 
-            Some(_) => return Err(state.syntax_error("Unknown key value")),
+            Some(_) => {},
 
             _ => break,
         }
