@@ -4,7 +4,7 @@ license = "GPL-3.0-or-later"
 readme = "README.md"
 repository = "https://github.com/eltrufas/osuparse"
 documentation = "https://docs.rs/osuparse"
-version = "1.0.0"
+version = "2.0.0"
 authors = ["Rafael Castillo <rafael@trfs.me>"]
 description = "Crate for parsing osu! beatmaps."
 

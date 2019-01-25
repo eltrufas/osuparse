@@ -1,6 +1,6 @@
 [package]
 name = "py_osuparse"
-version = "1.0.0"
+version = "2.0.0"
 authors = ["Rafael Castillo <rafael@trfs.me>"]
 
 [lib]
