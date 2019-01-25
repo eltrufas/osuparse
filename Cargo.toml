@@ -8,6 +8,11 @@ version = "2.0.0"
 authors = ["Rafael Castillo <rafael@trfs.me>"]
 description = "Crate for parsing osu! beatmaps."
 
+[badges]
+appveyor = { repository = "eltrufas/osuparse", branch = "master", service = "github" }
+travis-ci = { repository = "eltrufas/osuparse", branch = "master" }
+codecov = { repository = "eltrufas/osuparse", branch = "master", service = "github" }
+
 [dependencies]
 unicase = "2.2.0"
 
