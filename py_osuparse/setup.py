@@ -3,7 +3,7 @@ from setuptools_rust import Binding, RustExtension
 
 setup(
     name="osuparse",
-    version="2.0.0",
+    version="2.0.1",
     rust_extensions=[RustExtension("osuparse.osuparse",
                      binding=Binding.RustCPython)],
     packages=["osuparse"],
