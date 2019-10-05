@@ -28,15 +28,20 @@ impl Parsable for Beatmap {
             r#"osu file format v{}
 
 {}
-{}
-{}
-{}
-[TimingPoints]
-{}
-{}
-[HitObjects]
+
 {}
 
+{}
+
+{}
+
+[TimingPoints]
+{}
+
+{}
+
+[HitObjects]
+{}
 "#,
             self.version,
             self.general.as_parsed(),
@@ -86,16 +91,22 @@ UseSkinSprites: {}"#,
 
 impl Parsable for EditorSection {
     fn as_parsed(&self) -> String {
-        let bookmark_string = self
-            .bookmarks
-            .iter()
-            .map(|i| i.to_string())
-            .collect::<Vec<String>>()
-            .join(" ");
+        let bookmark_string = if !self.bookmarks.is_empty() {
+            format!(
+                "Bookmarks: {}",
+                self.bookmarks
+                    .iter()
+                    .map(|i| i.to_string())
+                    .collect::<Vec<String>>()
+                    .join(" ")
+            )
+        } else {
+            "".to_string()
+        };
 
         format!(
             r#"[Editor]
-Bookmarks: {}
+{}
 DistanceSpacing: {}
 BeatDivisor: {}
 GridSize: {}
@@ -259,7 +270,7 @@ impl Parsable for Spinner {
             self.x,
             self.y,
             self.time,
-            get_type(4, self.new_combo, self.color_skip),
+            get_type(8, self.new_combo, self.color_skip),
             self.hitsound,
             self.end_time,
             self.extras.as_parsed(),
@@ -318,7 +329,7 @@ impl Parsable for ColoursSection {
 /// Helper function htat, given a base number of either 1, 2, 4, or 128,
 /// returns the `type` bitmap for hitobjects.
 fn get_type(base: u8, new_combo: bool, color_skip: i32) -> u8 {
-    debug_assert!((base & 0b1000_1011) == 0);
+    debug_assert_eq!(base & 0b0111_0100, 0);
     let mut ret = base;
     if new_combo {
         ret |= 0b0000_0100;
