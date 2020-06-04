@@ -1,6 +1,7 @@
 # osuparse - An osu! beatmap parser crate
 
 [![Build Status](https://travis-ci.org/eltrufas/osuparse.svg?branch=master)](https://travis-ci.org/eltrufas/osuparse)
+[![codecov](https://codecov.io/gh/eltrufas/osuparse/branch/master/graph/badge.svg)](https://codecov.io/gh/eltrufas/osuparse)
 [![](http://meritbadge.herokuapp.com/osuparse)](https://crates.io/crates/osuparse)<Paste>
 [![](https://img.shields.io/crates/l/osuparse.svg)](https://github.com/eltrufas/osuparse/blob/master/LICENSE)
 

@@ -1,38 +1,49 @@
-use regex::Regex;
 use std;
 
 use super::*;
 use error::{Error, Result};
 
 pub struct ParseState<'a> {
-    lines: std::iter::Filter<std::str::Lines<'a>, fn(&&str) -> bool>,
-    current_line: Option<&'a str>,
+    lines: Box<dyn Iterator<Item=(usize, &'a str)> + 'a>,
+    // lines: std::iter::Filter<std::str::Lines<'a>, fn(&&str) -> bool>,
+    current_line: Option<(usize, &'a str)>,
 }
 
 impl<'a> ParseState<'a> {
     pub fn new(input: &'a str) -> Self {
-        lazy_static! {
-            static ref EMPTY_LINE: Regex = Regex::new(r"^\s*$").unwrap();
-        }
-
-        ParseState {
-            lines: input.lines().filter(|l| !EMPTY_LINE.is_match(l)),
+        let mut ps = ParseState {
+            lines: Box::new(input.lines().enumerate()
+                            .filter(|(_, l)| !l.trim().is_empty())),
             current_line: None,
-        }
+        };
+
+        ps.read_next_line();
+
+        ps
     }
-    pub fn get_current_line(&mut self) -> Option<&'a str> {
-        if let Some(line) = self.current_line {
-            Some(line)
-        } else {
-            self.read_next_line()
-        }
+    pub fn get_current_line(&self) -> Option<&'a str> {
+        self.current_line.map(|(_, l)| l)
     }
 
     pub fn read_next_line(&mut self) -> Option<&'a str> {
         let next_line = self.lines.next();
         self.current_line = next_line;
 
-        next_line
+        next_line.map(|(_, l)| l)
+    }
+
+    pub fn syntax_error(&self, reason: &str) -> Error {
+        let line = self.current_line.map(|(i, l)| (i, String::from(l)));
+        Error::Syntax(line, String::from(reason))
+    }
+
+    pub fn wrap_syntax_error<T>(&self, res: Result<T>) -> Result<T> {
+        res.map_err(|err| {
+            match err {
+                Error::Message(m) => self.syntax_error(&m),
+                _ => err,
+            }
+        })
     }
 }
 
@@ -62,12 +73,9 @@ macro_rules! parse_into_struct {
 			let mut iter = $line.split($sep).map(|s| s.trim());
 			$dest {
 				$($field: {
-					$f(iter.next()
-						.ok_or_else(|| Error::Syntax(format!(
-							"Unable to read field {} into struct {}",
-							stringify!($field),
-							stringify!($dest)))
-						)?)?
+                    iter.next()
+						.ok_or_else(|| Error::Message("Unable to parse line"))
+                        .and_then($f)?
 				}),*
 			}
 		}
@@ -86,17 +94,12 @@ macro_rules! value_parser {
 }
 
 /// Parse key-value pair.
-pub fn parse_kv_pair<'a>(state: &'a mut ParseState) -> Option<(&'a str, &'a str)> {
-    lazy_static! {
-        static ref RE: Regex = Regex::new(r"^([^:]+):(.*)$").unwrap();
-    }
-
+pub fn parse_kv_pair<'a>(state: &'a ParseState) -> Option<(&'a str, &'a str)> {
     state
-        .read_next_line()
-        .and_then(|l| RE.captures(l))
-        .and_then(|c| {
-            c.get(1)
-                .and_then(|k| c.get(2).map(|v| (k.as_str().trim(), v.as_str().trim())))
+        .get_current_line()
+        .and_then(|l| {
+            let mut iter = l.splitn(2, ":");
+            iter.next().and_then(|left| iter.next().map(|right| (left.trim(), right.trim())))
         })
 }
 
@@ -106,12 +109,15 @@ macro_rules! parse_kv_section {
             let mut section: $s_t = Default::default();
 
             loop {
+                $state.read_next_line();
                 match parse_kv_pair($state) {
                     $(
                     Some((k, v)) if unicase::eq(k, $str) => {
-                        section.$field = value_parser!(v, $($f),*)?
+                        section.$field = $state
+                            .wrap_syntax_error(value_parser!(v, $($f),*))?
                     },
                     )*
+                    Some(_) => {},
                     _ => break,
                 }
             }
@@ -121,15 +127,9 @@ macro_rules! parse_kv_section {
     }
 }
 
-macro_rules! make_syntax_err {
-    ($reason:expr) => {
-        || Error::Syntax(String::from($reason))
-    };
-}
-
 pub fn parse_num<T: std::str::FromStr>(n: &str) -> Result<T> {
     n.parse()
-        .map_err(|_| Error::Syntax(format!("Unable to parse number: {}", n)))
+        .map_err(|_| Error::Message("Unable to parse number"))
 }
 
 pub fn parse_string(s: &str) -> Result<String> {
@@ -139,7 +139,7 @@ pub fn parse_string(s: &str) -> Result<String> {
 pub fn parse_bool(s: &str) -> Result<bool> {
     s.parse::<i32>()
         .map(|n| n != 0)
-        .map_err(|_| Error::Syntax(String::from("Could not parse bool")))
+        .map_err(|_| Error::Message("Could not parse bool"))
 }
 
 pub fn parse_mode(s: &str) -> Result<GameMode> {
@@ -148,7 +148,7 @@ pub fn parse_mode(s: &str) -> Result<GameMode> {
         "1" => Ok(GameMode::Taiko),
         "2" => Ok(GameMode::CTB),
         "3" => Ok(GameMode::Mania),
-        _ => Err(Error::Syntax(String::from("Unable to parse gamemode"))),
+        _ => Err(Error::Message("Unable to parse gamemode")),
     }
 }
 
@@ -177,7 +177,7 @@ pub fn parse_slider_type(s: &str) -> Result<SliderType> {
         "B" => Ok(SliderType::Bezier),
         "P" => Ok(SliderType::Perfect),
         "C" => Ok(SliderType::Catmull),
-        _ => Err(Error::Syntax(String::from("Invalid slider type"))),
+        _ => Err(Error::Message("Invalid slider type")),
     }
 }
 
@@ -257,19 +257,39 @@ pub fn parse_hit_object(s: &str) -> Result<HitObject> {
             extras: read_val!(iter, parse_extras).unwrap_or(Default::default()),
         })),
 
-        128 => Ok(HitObject::HoldNote(HoldNote {
-            x,
-            y,
-            time,
-            new_combo,
-            color_skip,
-            hitsound,
+        128 => {
+            let mut obj = HoldNote {
+                x,
+                y,
+                time,
+                new_combo,
+                color_skip,
+                hitsound,
 
-            end_time: read_val!(iter, parse_num)?,
+                ..Default::default()
+            };
 
-            extras: read_val!(iter, parse_extras).unwrap_or(Default::default()),
-        })),
+            let (end_time, extras) = iter.next()
+                .and_then(|s| {
+                    let mut iter = s.splitn(2, ':');
+                    iter.next().and_then(|et| {
+                        iter.next().map(|ex| (et, ex))
+                    })
+                })
+                .ok_or_else(|| Error::Message("Could not read object extras"))
+                .and_then(|(et, ex)| {
+                    let et: i32 = parse_num(et)?;
+                    let ex = parse_extras(ex)?;
 
-        _ => Err(Error::Syntax(String::from("Invalid hit object type"))),
+                    return Ok((et, ex))
+                })?;
+
+            obj.end_time = end_time;
+            obj.extras = extras;
+
+            Ok(HitObject::HoldNote(obj))
+        },
+
+        _ => Err(Error::Message("Invalid hit object type")),
     }
 }

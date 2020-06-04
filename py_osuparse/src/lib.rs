@@ -170,32 +170,86 @@ py_module_initializer!(osuparse, initosuparse, PyInit_osuparse, |py, m| {
     Ok(())
 });
 
-fn read_beatmap_from_file(filename: &str) -> Option<Beatmap> {
-    let mut file = File::open(filename).unwrap();
+enum Error {
+    Parse(osuparse::Error),
+    IO(std::io::Error),
+}
+
+impl From<osuparse::Error> for Error {
+    fn from(err: osuparse::Error) -> Error {
+        Error::Parse(err)
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(err: std::io::Error) -> Error {
+        Error::IO(err)
+    }
+}
+
+fn make_pyerr(py: Python, err: Error) -> PyErr {
+    match err {
+        Error::Parse(parse_err) => {
+            PyErr::new::<exc::ValueError, _>(
+                py,
+                parse_err.to_string()
+            )
+        },
+        Error::IO(io_err) => {
+            PyErr::new::<exc::IOError, _>(
+                py,
+                io_err.to_string()
+            )
+        },
+    }
+}
+
+/*
+fn into(self) -> PyResult<T> {
+    self.map_err(|err| {
+        let py = Python::acquire_gil();
+        match err {
+            Error::Parse(py, parse_err) => {
+                PyErr::new::<exc::ValueError, _>(
+                    py,
+                    parse_err.to_string()
+                )
+            },
+            Error::IO(py, io_err) => {
+                PyErr::new::<exc::IOError, _>(
+                    py,
+                    io_err.to_string()
+                )
+            },
+        }
+    })
+}*/
+
+fn read_beatmap_from_file(filename: &str) -> Result<Beatmap, Error> {
+    let mut file = File::open(filename)?;
     let mut contents = String::new();
-    file.read_to_string(&mut contents).unwrap();
-    parse_beatmap(&contents).ok()
+    file.read_to_string(&mut contents)?;
+    parse_beatmap(&contents).map_err(|e| e.into())
 }
 
 fn parse_beatmaps_py(py: Python, filenames: Vec<String>) -> PyResult<PyList> {
-    let maps: Option<Vec<Beatmap>> = py.allow_threads(move || {
+    let maps: Result<Vec<Beatmap>, Error> = py.allow_threads(move || {
         filenames
             .par_iter()
             .map(|f| read_beatmap_from_file(f))
             .collect()
     });
 
-    maps.ok_or_else(|| PyErr::new::<exc::ValueError, _>(py, "Error while parsing maps"))
+    maps.map_err(|e| make_pyerr(py, e))
         .and_then(|v: Vec<Beatmap>| {
             let maps: PyResult<Vec<PyDict>> =
                 v.into_iter().map(|map| build_beatmap(py, map)).collect();
-
             maps.map(|v| v.to_py_object(py))
         })
 }
 
 fn parse_beatmap_py(py: Python, filename: String) -> PyResult<PyDict> {
     read_beatmap_from_file(&filename)
-        .ok_or_else(|| PyErr::new::<exc::ValueError, _>(py, "Error while parsing map"))
+        .map_err(|e| make_pyerr(py, e))
         .and_then(|map| build_beatmap(py, map))
 }
