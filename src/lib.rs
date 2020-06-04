@@ -6,6 +6,7 @@ pub use error::Error;
 #[macro_use]
 mod parse;
 mod error;
+pub mod deserialize;
 
 use parse::*;
 
@@ -14,7 +15,7 @@ use parse::*;
 ///
 /// __NOTE:__ This is missing the Event section, as parsing for this has yet to be
 /// implemented in this crate.
-#[derive(Default)]
+#[derive(Debug, Default, PartialEq, Clone)]
 pub struct Beatmap {
     /// The version of the .osu file format.
     pub version: i32,
@@ -28,16 +29,16 @@ pub struct Beatmap {
 }
 
 /// One of the four currently available osu! gamemodes.
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum GameMode {
-    Osu,
-    Taiko,
-    CTB,
-    Mania,
+    Osu = 0,
+    Taiko = 1,
+    CTB = 2,
+    Mania = 3,
 }
 
 /// General properties of a beatmap.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct GeneralSection {
     pub audio_filename: String,
     /// Is number of milliseconds before the audio file should begin playing.
@@ -89,6 +90,7 @@ impl Default for GeneralSection {
     }
 }
 
+#[derive(Debug, PartialEq, Clone)]
 /// Properties relating to the beatmap editor state
 pub struct EditorSection {
     pub bookmarks: Vec<i32>,
@@ -110,6 +112,7 @@ impl Default for EditorSection {
     }
 }
 
+#[derive(Debug, PartialEq, Clone)]
 /// Metadata relating to the beatmap
 pub struct MetadataSection {
     /// Is the title of the song limited to ASCII characters, e.g. `Yoru Naku Usagi wa Yume o Miru`.
@@ -150,6 +153,7 @@ impl Default for MetadataSection {
     }
 }
 
+#[derive(Debug, PartialEq, Copy, Clone)]
 /// Difficulty modifiers for the beatmap
 pub struct DifficultySection {
     pub hp_drain_rate: f32,
@@ -195,6 +199,7 @@ impl Default for DifficultySection {
 }
 
 
+#[derive(Debug, PartialEq, Clone)]
 /// Represents a single timing point
 pub struct TimingPoint {
     /// Is the number of milliseconds from the start of the song, and defines
@@ -234,6 +239,24 @@ pub struct TimingPoint {
     pub kiai_mode: bool,
 }
 
+impl Default for TimingPoint {
+    fn default() -> Self {
+        TimingPoint {
+            offset: 0.0,
+            /// This equals 200 beats per minute
+            ms_per_beat: 300.0,
+            /// Four beats per measure is standard for a lot of music
+            meter: 4,
+            sample_set: 0,
+            sample_index: 0,
+            volume: 100,
+            inherited: false,
+            kiai_mode: false,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
 /// One of the four possible hit objects appearing on an osu! map.
 pub enum HitObject {
     HitCircle(HitCircle),
@@ -242,6 +265,7 @@ pub enum HitObject {
     HoldNote(HoldNote),
 }
 
+#[derive(Debug, PartialEq, Clone)]
 pub struct HitCircle {
     pub x: i32,
     pub y: i32,
@@ -252,6 +276,7 @@ pub struct HitCircle {
     pub extras: HitObjectExtras,
 }
 
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 /// Type of slider curve
 pub enum SliderType {
     Linear,
@@ -261,6 +286,7 @@ pub enum SliderType {
     Catmull,
 }
 
+#[derive(Debug, PartialEq, Clone)]
 pub struct Slider {
     pub x: i32,
     pub y: i32,
@@ -277,6 +303,7 @@ pub struct Slider {
     pub extras: HitObjectExtras,
 }
 
+#[derive(Debug, PartialEq, Clone)]
 pub struct Spinner {
     pub x: i32,
     pub y: i32,
@@ -288,7 +315,7 @@ pub struct Spinner {
     pub extras: HitObjectExtras,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug, PartialEq, Clone)]
 pub struct HoldNote {
     pub x: i32,
     pub y: i32,
@@ -302,6 +329,7 @@ pub struct HoldNote {
 
 /// The extras field is optional and define additional parameters related to
 /// the hit sound samples.
+#[derive(Debug, PartialEq, Clone)]
 pub struct HitObjectExtras {
     /// Changes the sample set of the __normal__ hit sound.
     ///
@@ -343,11 +371,11 @@ impl Default for HitObjectExtras {
 }
 
 /// An RGB triplet representing a colour.
-#[derive(Default, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Debug, Default, PartialEq, PartialOrd, Eq, Ord, Copy, Clone)]
 pub struct Colour(i32, i32, i32);
 
 /// Includes a beatmap's combo colours as well as slider colour overrides.
-#[derive(Default)]
+#[derive(Debug, Default, PartialEq, Clone)]
 pub struct ColoursSection {
     pub colours: Vec<Colour>,
     pub slider_body: Colour,
@@ -355,6 +383,7 @@ pub struct ColoursSection {
     pub slider_border: Colour,
 }
 
+#[derive(Debug)]
 enum Section {
     General(GeneralSection),
     Editor(EditorSection),
@@ -444,6 +473,7 @@ fn parse_section(state: &mut ParseState) -> Result<Section> {
                     "EpilepsyWarning" => epilepsy_warning: parse_bool;
                     "StoryFireInFront" => story_fire_in_front: parse_bool;
                     "SpecialStyle" => special_style: parse_bool;
+                    "UseSkinSprites" => use_skin_sprites: parse_bool;
                 }
             })),
 
@@ -599,6 +629,7 @@ mod tests {
     use super::*;
     use std::fs::File;
     use std::io::prelude::*;
+    use deserialize::Parsable;
 
     #[test]
     fn test_parse_version_string() {
@@ -706,5 +737,22 @@ BeatmapSetID:289074
         assert_eq!(map.general.stack_leniency, 0.7);
         assert_eq!(map.general.sample_set, "Soft");
         assert_eq!(map.editor.bookmarks, vec![5, 6]);
+    }
+
+    #[test]
+    fn serialize_then_deserialize_then_serialize() {
+        // Serialize from file
+        let mut file = File::open("map.osu").unwrap();
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).unwrap();
+        let map = parse_beatmap(contents.as_str()).unwrap();
+
+        // Deserialize to string
+        let map_string = map.as_parsed();
+        println!("{}", map_string);
+
+        // Serialize from string
+        let map2 = parse_beatmap(map_string.as_str()).unwrap();
+        assert_eq!(map, map2);
     }
 }
